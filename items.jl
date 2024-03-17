@@ -1,0 +1,40 @@
+include("structs.jl")
+
+const ITEMS = [
+    绿头怪(id="1")
+    红头怪(id="2", prefix=["1"])
+    绿头怪(id="3", prefix=["2"])
+    黄钥匙(id="4", prefix=["3"])
+    黄门(id="5", prefix=String[])
+    绿头怪(id="6", prefix=["5"]) # 初级法师
+    绿头怪(id="7", prefix=["6"])
+    绿头怪(id="8", prefix=["7"])
+    绿头怪(id="9", prefix=["8"]) # 青头怪
+    黄门(id="10", prefix=String[])
+    绿头怪(id="11", prefix=["10"]) # 骷髅人
+    # 药水(id="12", prefix=["11"])
+    # 黄钥匙(id="13", prefix=["12", "14"])
+    # 骷髅人(id="14", prefix=["11"])
+    # 红宝石(id="15", prefix=["11"])
+    # 黄门(id="16", prefix=["14"])
+    # 骷髅士兵(id="17", prefix=["16"])
+    # 黄钥匙(id="18", prefix=["17"])
+    # 蓝宝石(id="19", prefix=["17"])
+    # 蓝钥匙(id="20", prefix=["17"])
+    # 蓝门(id="21", prefix=["17"])
+    # 骷髅士兵(id="22", prefix=["21"])
+    # 药水(id="23", prefix=["22"])
+    # 药水(id="24", prefix=["23", "26", "25"])
+    # 药水(id="25", prefix=["22"], value=500)
+    # 黄钥匙(id="26", prefix=["22"], value=2)
+    # 黄钥匙(id="27", prefix=["30"], value=4)
+    # 黄门(id="28", prefix=String[])
+    # 蓝钥匙(id="29", prefix=["30"])
+    # 兽面人(id="30", prefix=["28"])
+    # 药水(id="31", prefix=["32", "35"])
+    # 药水(id="32", prefix=["35"])
+    # 药水(id="33", prefix=["34", "35"])
+    # 药水(id="34", prefix=["9"])
+    # 黄钥匙(id="35", prefix=["34"], value=2)
+]
+
