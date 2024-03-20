@@ -9,41 +9,56 @@ Base.@kwdef struct Monster <: ItemType
     exper::Int = 1
 end
 
-struct YellowDoor <: ItemType end
-struct BlueDoor <: ItemType end
-struct RedDoor <: ItemType end
+Base.@kwdef struct YellowDoor <: ItemType
+    name::String = "黄门"
+end
+Base.@kwdef struct BlueDoor <: ItemType
+    name::String = "蓝门"
+end
+Base.@kwdef struct RedDoor <: ItemType
+    name::String = "红门"
+end
 
 Base.@kwdef struct YellowKey <: ItemType
+    name::String = "黄钥匙"
     value::Int = 1
 end
 
 Base.@kwdef struct RedKey <: ItemType
+    name::String = "红钥匙"
     value::Int = 1
 end
 
 Base.@kwdef struct BlueKey <: ItemType
+    name::String = "蓝钥匙"
     value::Int = 1
 end
+
 struct Key2 <: ItemType end
 struct Key18 <: ItemType end
 
 Base.@kwdef struct Water <: ItemType
+    name::String = "药水"
     value::Int = 300
 end
 
 Base.@kwdef struct MoneyPie <: ItemType
+    name::String = "金币饼"
     value::Int = 300
 end
 
 Base.@kwdef struct AttackStone <: ItemType
+    name::String = "攻击(红)宝石"
     value::Int = 3
 end
 
 Base.@kwdef struct DefenseStone <: ItemType
+    name::String = "防御(蓝)宝石"
     value::Int = 3
 end
 
 Base.@kwdef struct Mall <: ItemType
+    name::String = "金币商城"
     health::Int = 800
     attack::Int = 4
     defense::Int = 4
@@ -51,6 +66,7 @@ Base.@kwdef struct Mall <: ItemType
 end
 
 Base.@kwdef struct ExprMall <: ItemType
+    name::String = "经验商城"
     level::Int = 1
     attack::Int = 5
     defense::Int = 5
@@ -59,6 +75,7 @@ Base.@kwdef struct ExprMall <: ItemType
 end
 
 Base.@kwdef struct AdvanceMall <: ItemType
+    name::String = "高级金币商城"
     health::Int = 4000
     attack::Int = 20
     defense::Int = 20
@@ -66,6 +83,7 @@ Base.@kwdef struct AdvanceMall <: ItemType
 end
 
 Base.@kwdef struct AdvanceExprMall <: ItemType
+    name::String = "高级经验商城"
     level::Int = 3
     attack::Int = 17
     defense::Int = 17
