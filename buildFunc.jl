@@ -2,11 +2,12 @@ include("items.jl")
 
 using JuMP
 # using AmplNLWriter, Couenne_jll
-using SCIP
+# using SCIP
+using COPT, Gurobi
 using CSV, DataFrames
 
-const NACTION = 12
 const NITEM = length(ITEMS)
+const NACTION = NITEM + 1
 const MON_INDEX = findall(x -> x.type isa Monster, ITEMS)
 const NMONSTER = length(MON_INDEX)
 const YellowKey_INDEX = findall(x -> x.type isa YellowKey, ITEMS)
@@ -43,6 +44,7 @@ function add_variable!(model, item, ::Monster)
     @variable(model, [1:NACTION], base_name = "go2_" * item.id, binary = true)
     @variable(model, [1:NACTION], base_name = "isAlive_" * item.id, binary = true)
     @variable(model, [1:NACTION], base_name = "roundNum_" * item.id, integer = true)
+    @variable(model, [1:NACTION], base_name = "hurtValue_" * item.id, integer = true)
     return nothing
 end
 
@@ -56,18 +58,13 @@ function add_constraint!(model)
     # 初始状态约束
     # @constraint(model, variable_by_name(model, "level[1]") == 1)
     @constraint(model, variable_by_name(model, "healthValue[1]") == 1000)
-    map(i -> @constraint(model, variable_by_name(model, "attackValue[$i]") == 10), 1:NACTION)
-    map(i -> @constraint(model, variable_by_name(model, "defenseValue[$i]") == 10), 1:NACTION)
-    # @constraint(model, variable_by_name(model, "attackValue[1]") == 10)
-    # @constraint(model, variable_by_name(model, "attackValue[2]") == 10)
-    # @constraint(model, variable_by_name(model, "attackValue[3]") == 10)
-    # @constraint(model, variable_by_name(model, "defenseValue[1]") == 10)
-    # @constraint(model, variable_by_name(model, "defenseValue[2]") == 10)
-    # @constraint(model, variable_by_name(model, "defenseValue[3]") == 10)
+    # map(i -> @constraint(model, variable_by_name(model, "attackValue[$i]") == 10), 1:NACTION)
+    # map(i -> @constraint(model, variable_by_name(model, "defenseValue[$i]") == 10), 1:NACTION)
+    @constraint(model, variable_by_name(model, "attackValue[1]") == 10)
+    @constraint(model, variable_by_name(model, "defenseValue[1]") == 10)
     @constraint(model, variable_by_name(model, "goldValue[1]") == 0)
     @constraint(model, variable_by_name(model, "experValue[1]") == 0)
     @constraint(model, variable_by_name(model, "yellowKeyNum[1]") == 1)
-    # @constraint(model, variable_by_name(model, "go2_4[4]") == 1)
     # @constraint(model, variable_by_name(model, "redKeyNum[1]") == 1)
     # @constraint(model, variable_by_name(model, "blueKeyNum[1]") == 1)
     map(item -> @constraint(model, variable_by_name(model, "isAlive_$(item.id)[1]") == 1), ITEMS)
@@ -111,18 +108,16 @@ end
 
 function add_constraint!(model, t, ::Monster)
     # 喝药水后生命值增加
-    # go2s_water = [_ref(model, "go2_", i, t) for i in Water_INDEX]
-    # vals_water = [ITEMS[i].type.value for i in Water_INDEX]
+    go2s_water = [_ref(model, "go2_", i, t) for i in Water_INDEX]
+    vals_water = [ITEMS[i].type.value for i in Water_INDEX]
     # 生命值约束
     he = _ref(model, "healthValue", t)
-    de = _ref(model, "defenseValue", t)
     go2s = [_ref(model, "go2_", i, t) for i in MON_INDEX]
-    ros = [_ref(model, "roundNum_", i, t) for i in MON_INDEX]
-    hurt = [ITEMS[i].type.attack - de for i in MON_INDEX]
-    @NLconstraint(model, sum(go2s[i] * ros[i] * hurt[i] for i in 1:NMONSTER) <= he - 1)
+    hurts = [_ref(model, "hurtValue_", i, t) for i in MON_INDEX]
+    @constraint(model, sum(go2s[i] * hurts[i] for i in 1:NMONSTER) <= he - 1)
     # 攻击生命值状态转移
     he_next = _ref(model, "healthValue", t + 1)
-    @NLconstraint(model, he_next + sum(go2s[i] * ros[i] * hurt[i] for i in 1:NMONSTER) == he) # + sum(go2s_water[i] * vals_water[i] for i in 1:NWATER)
+    @constraint(model, he_next + sum(go2s[i] * hurts[i] for i in 1:NMONSTER) == he + sum(go2s_water[i] * vals_water[i] for i in 1:NWATER)) # 
     # 经验状态转移
     exper = _ref(model, "experValue", t)
     exper_next = _ref(model, "experValue", t + 1)
@@ -141,39 +136,15 @@ function add_constraint!(model, item, t::Int, ::Monster)
     at = _ref(model, "attackValue", t)
     go2 = _ref(model, "go2_", item.id, t)
     ro = _ref(model, "roundNum_", item.id, t)
+    hurt = _ref(model, "hurtValue_", item.id, t)
+    de = _ref(model, "defenseValue", t)
     # 攻击大于防御可攻击
     @constraint(model, at >= (monster.defense + 1) * go2)
     # 回合数约束
-    @NLconstraint(model, ro * (at - monster.defense) >= monster.health)
-    @NLconstraint(model, go2 * (ro - 1) * (at - monster.defense) <= monster.health)
+    @constraint(model, ro * at - ro * monster.defense * go2 >= monster.health)
+    @constraint(model, (ro - 1) * at - (ro - 1) * go2 * monster.defense <= monster.health)
+    @constraint(model, ro * monster.attack - ro * de == hurt)
 end
-
-# function add_constraint!(model, t, ::YellowKey)
-#     # 拿黄钥匙
-#     yellowKeyNum = _ref(model, "yellowKeyNum", t)
-#     go2s = [_ref(model, "go2_", i, t) for i in YellowKey_INDEX]
-#     vals = [ITEMS[i].type.value for i in YellowKey_INDEX]
-#     yellowKeyNum_next = _ref(model, "yellowKeyNum", t + 1)
-#     @constraint(model, yellowKeyNum_next == yellowKeyNum + sum(go2s .* vals))
-# end
-
-# function add_constraint!(model, t, ::BlueKey)
-#     # 拿蓝钥匙
-#     blueKeyNum = _ref(model, "blueKeyNum", t)
-#     go2s = [_ref(model, "go2_", i, t) for i in BlueKey_INDEX]
-#     vals = [ITEMS[i].type.value for i in BlueKey_INDEX]
-#     blueKeyNum_next = _ref(model, "blueKeyNum", t + 1)
-#     @constraint(model, blueKeyNum_next == blueKeyNum + sum(go2s .* vals))
-# end
-
-# function add_constraint!(model, t, ::RedKey)
-#     # 拿红钥匙
-#     redKeyNum = _ref(model, "redKeyNum", t)
-#     go2s = [_ref(model, "go2_", i, t) for i in RedKey_INDEX]
-#     vals = [ITEMS[i].type.value for i in RedKey_INDEX]
-#     redKeyNum_next = _ref(model, "redKeyNum", t + 1)
-#     @constraint(model, redKeyNum_next == redKeyNum + sum(go2s .* vals))
-# end
 
 function add_constraint!(model, t, ::YellowDoor)
     # 开黄门
@@ -209,27 +180,23 @@ end
 #     @constraint(model, redKeyNum_next == redKeyNum - sum(go2s))
 # end
 
-# function add_constraint!(model, t, ::Water)
+function add_constraint!(model, t, ::AttackStone)
+    # 攻击宝石增加攻击力
+    attackValue = _ref(model, "attackValue", t)
+    go2s = [_ref(model, "go2_", i, t) for i in AttackStone_INDEX]
+    vals = [ITEMS[i].type.value for i in AttackStone_INDEX]
+    attackValue_next = _ref(model, "attackValue", t + 1)
+    @constraint(model, attackValue_next == attackValue + sum(go2s .* vals))
+end
 
-# end
-
-# function add_constraint!(model, t, ::AttackStone)
-#     # 攻击宝石增加攻击力
-#     attackValue = _ref(model, "attackValue", t)
-#     go2s = [_ref(model, "go2_", i, t) for i in AttackStone_INDEX]
-#     vals = [ITEMS[i].type.value for i in AttackStone_INDEX]
-#     attackValue_next = _ref(model, "attackValue", t + 1)
-#     @constraint(model, attackValue_next == attackValue + sum(go2s .* vals))
-# end
-
-# function add_constraint!(model, t, ::DefenseStone)
-#     # 防御宝石增加防御力
-#     defenseValue = _ref(model, "defenseValue", t)
-#     go2s = [_ref(model, "go2_", i, t) for i in DefenseStone_INDEX]
-#     vals = [ITEMS[i].type.value for i in DefenseStone_INDEX]
-#     defenseValue_next = _ref(model, "defenseValue", t + 1)
-#     @constraint(model, defenseValue_next == defenseValue + sum(go2s .* vals))
-# end
+function add_constraint!(model, t, ::DefenseStone)
+    # 防御宝石增加防御力
+    defenseValue = _ref(model, "defenseValue", t)
+    go2s = [_ref(model, "go2_", i, t) for i in DefenseStone_INDEX]
+    vals = [ITEMS[i].type.value for i in DefenseStone_INDEX]
+    defenseValue_next = _ref(model, "defenseValue", t + 1)
+    @constraint(model, defenseValue_next == defenseValue + sum(go2s .* vals))
+end
 
 function add_constraint!(model, item, t::Int, ::ItemType)
 
@@ -245,14 +212,16 @@ add_objective!(model, ::Val{3}) = @objective(model, Max, sum(variable_by_name(mo
 add_objective!(model, ::Val{4}) = @objective(model, Min, variable_by_name(model, "yellowKeyNum[$NACTION]")) # 尽力拿钥匙
 add_objective!(model, ::Val{5}) = @objective(model, Max, variable_by_name(model, "experValue[$NACTION]")) # 尽力拿经验
 add_objective!(model, ::Val{6}) = @objective(model, Max, variable_by_name(model, "goldValue[$NACTION]")) # 尽力拿金币
+add_objective!(model, ::Val{7}) = @objective(model, Max, variable_by_name(model, "attackValue[$NACTION]")) # 尽力提升攻击力
 
 function build!()
     # model = Model(() -> AmplNLWriter.Optimizer(Couenne_jll.amplexe))
-    model = Model(SCIP.Optimizer)
-    set_attribute(model, "display/verblevel", 0)
+    model = Model(Gurobi.Optimizer)
+    set_silent(model)
+    # set_attribute(model, "display/verblevel", 0)
     add_variable!(model)
     add_constraint!(model)
-    add_objective!(model, Val(1))
+    add_objective!(model, Val(7))
     optimize!(model)
     @info termination_status(model)
     @info objective_value(model)
@@ -278,6 +247,18 @@ function model_show(model)
         df = hcat(df, DataFrame("step$i" => [value(variable_by_name(model, name * "[$i]")) for name in names]))
     end
     CSV.write("result.csv", df, index=true)
+    # 导出路线
+    open("route.txt", "w") do io
+        for t in 1:NACTION
+            for item in ITEMS
+                go2 = value(_ref(model, "go2_", item.id, t))
+                if go2 >= 1.0
+                    println(io, join(("Step", t, ": go to ", item.id, "_", item.type.name)))
+                    break
+                end
+            end
+        end
+    end
 end
 
 model = build!();
