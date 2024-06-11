@@ -1,4 +1,5 @@
 abstract type ItemType end
+abstract type MALL <: ItemType end
 
 Base.@kwdef struct Monster <: ItemType
     name::String = "绿头怪"
@@ -18,6 +19,9 @@ end
 Base.@kwdef struct RedDoor <: ItemType
     name::String = "红门"
 end
+Base.@kwdef struct Door2 <: ItemType
+    name::String = "第二层特殊门"
+end
 
 Base.@kwdef struct YellowKey <: ItemType
     name::String = "黄钥匙"
@@ -34,7 +38,11 @@ Base.@kwdef struct BlueKey <: ItemType
     value::Int = 1
 end
 
-struct Key2 <: ItemType end
+Base.@kwdef struct Key2 <: ItemType
+    name::String = "钥匙2"
+    value::Int = 1
+end
+
 struct Key18 <: ItemType end
 
 Base.@kwdef struct Water <: ItemType
@@ -89,6 +97,20 @@ Base.@kwdef struct AdvanceExprMall <: ItemType
     defense::Int = 17
     priceL::Int = 270
     price::Int = 95
+end
+
+Base.@kwdef struct KeyMall <: ItemType
+    name::String = "钥匙商城"
+    redKey_price::Int = 100
+    blueKey_price::Int = 50
+    yellowKey_price::Int = 10
+end
+
+Base.@kwdef struct SellKeyMall <: ItemType
+    name::String = "钥匙商城"
+    redKey_price::Int = 70
+    blueKey_price::Int = 35
+    yellowKey_price::Int = 7
 end
 
 Base.@kwdef struct Item
